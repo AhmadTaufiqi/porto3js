@@ -183,7 +183,7 @@ function blobShadow(x, z, sx, sz) {
 }
 
 const CONSOLE_POS = new THREE.Vector3(0, -0.4, -STAGE_D);   // in front of the camera, faces +Z
-const TV_POS = new THREE.Vector3(0, FLOOR_Y + 2.04, STAGE_D); // behind the camera, faces -Z
+const TV_POS = new THREE.Vector3(0, FLOOR_Y + 2.24, STAGE_D); // behind the camera, faces -Z
 blobShadow(CONSOLE_POS.x, CONSOLE_POS.z, 3.4, 1.5);
 blobShadow(TV_POS.x, TV_POS.z, 3.8, 3.2);
 
@@ -509,7 +509,7 @@ const roughTex = plasticRoughness();
 const bumpTex = plasticBump();
 
 const glossWhite = new THREE.MeshPhysicalMaterial({
-  color: 0xf4f2ec, roughness: 1, roughnessMap: roughTex,
+  color: 0xeceae3, roughness: 1, roughnessMap: roughTex,
   bumpMap: bumpTex, bumpScale: 0.35,
   metalness: 0, clearcoat: 1, clearcoatRoughness: 0.05,
   envMapIntensity: 1.15, side: THREE.DoubleSide
@@ -589,35 +589,39 @@ function loftRoundedRect(sections, segs = 8) {
 }
 
 /* --- front frame with window + speaker slots (real openings) --- */
-const FW = 5.2, FH = 3.8, FR = 0.42, FBEV = 0.05, FT = 0.38;
-const TWIN_CX = -0.5, TWIN_CY = 0.15, TWIN_W = 3.5, TWIN_H = 2.7;
+// computer-monitor proportions: tall front with a chin for the controls
+const FW = 4.7, FH = 4.2, FR = 0.4, FBEV = 0.05, FT = 0.38;
+const TWIN_CX = 0, TWIN_CY = 0.5, TWIN_W = 3.5, TWIN_H = 2.7;
+const STEP = 0.18;                      // width of the stepped (recessed) inner bezel
 
 const frameShape = roundedRect(new THREE.Shape(), 0, 0, FW - 2 * FBEV, FH - 2 * FBEV, FR - FBEV);
-frameShape.holes.push(roundedRect(new THREE.Path(), TWIN_CX, TWIN_CY, TWIN_W + 2 * FBEV, TWIN_H + 2 * FBEV, 0.4 + FBEV));
-const SLOT_X = 1.95;
-for (let i = 0; i < 6; i++) {
-  frameShape.holes.push(roundedRect(new THREE.Path(), SLOT_X, -0.1 - i * 0.19, 0.8 + 2 * FBEV, 0.04 + 2 * FBEV, (0.04 + 2 * FBEV) / 2));
-}
+frameShape.holes.push(roundedRect(new THREE.Path(), TWIN_CX, TWIN_CY, TWIN_W + 2 * STEP + 2 * FBEV, TWIN_H + 2 * STEP + 2 * FBEV, 0.42 + FBEV));
 const frame = new THREE.Mesh(extrude(frameShape, FT - 2 * FBEV, FBEV, 28), glossWhite);
 frame.position.z = -FT;
 frame.name = 'crt_front_frame';
 tv.add(frame);
 
-// dark floor visible only through the speaker slots
-const slotBack = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.3, 0.02), new THREE.MeshBasicMaterial({ color: 0x060708 }));
-slotBack.position.set(SLOT_X, -0.58, -FT + 0.04);
-slotBack.name = 'crt_speaker_back';
-tv.add(slotBack);
+// recessed inner bezel: gives the stepped look between the outer frame and the glass
+const innerWhite = glossWhite.clone();
+innerWhite.color.set(0xdcdad2);
+const IB = 0.02;
+const innerShape = roundedRect(new THREE.Shape(), TWIN_CX, TWIN_CY,
+  TWIN_W + 2 * STEP + 0.01 - 2 * IB, TWIN_H + 2 * STEP + 0.01 - 2 * IB, 0.42 - IB);
+innerShape.holes.push(roundedRect(new THREE.Path(), TWIN_CX, TWIN_CY, TWIN_W + 2 * IB, TWIN_H + 2 * IB, 0.36 + IB));
+const innerBezel = new THREE.Mesh(extrude(innerShape, 0.05, IB, 28), innerWhite);
+innerBezel.position.z = -0.19;          // front surface sits ~0.10 below the outer frame
+innerBezel.name = 'crt_inner_bezel';
+tv.add(innerBezel);
 
 /* --- rear housing --- */
 const housingSections = [
-  { z: -0.36, w: 5.10, h: 3.70, r: 0.40 },
-  { z: -0.90, w: 5.06, h: 3.66, r: 0.42 },
-  { z: -1.30, w: 4.70, h: 3.40, r: 0.50 },
-  { z: -1.85, w: 3.90, h: 2.85, r: 0.60 },
-  { z: -2.40, w: 3.00, h: 2.20, r: 0.65 },
-  { z: -2.90, w: 2.30, h: 1.70, r: 0.62 },
-  { z: -3.20, w: 1.90, h: 1.40, r: 0.55 },
+  { z: -0.36, w: 4.60, h: 4.10, r: 0.40 },
+  { z: -0.90, w: 4.56, h: 4.06, r: 0.42 },
+  { z: -1.30, w: 4.25, h: 3.70, r: 0.50 },
+  { z: -1.85, w: 3.60, h: 3.10, r: 0.60 },
+  { z: -2.40, w: 2.90, h: 2.40, r: 0.65 },
+  { z: -2.90, w: 2.25, h: 1.85, r: 0.62 },
+  { z: -3.20, w: 1.85, h: 1.50, r: 0.55 },
 ].reverse();
 const housing = new THREE.Mesh(loftRoundedRect(housingSections, 8), glossWhiteHousing);
 housing.name = 'crt_rear_housing';
@@ -632,11 +636,26 @@ for (let i = 0; i < 5; i++) {
 }
 
 // feet
-[-1.6, 1.6].forEach((x, i) => {
-  const f = new THREE.Mesh(new RoundedBoxGeometry(1.3, 0.24, 1.2, 3, 0.08), rubberMat);
-  f.position.set(x, -1.93, -0.8);
-  f.name = 'foot_' + i;
-  tv.add(f);
+// flat swivel base under the housing
+const standBase = new THREE.Mesh(new RoundedBoxGeometry(2.9, 0.2, 2.3, 4, 0.08), innerWhite);
+standBase.position.set(0, -2.13, -1.5);
+standBase.name = 'crt_stand_base';
+tv.add(standBase);
+const standPad = new THREE.Mesh(new RoundedBoxGeometry(2.5, 0.05, 1.9, 3, 0.02), rubberMat);
+standPad.position.set(0, -2.235, -1.5);
+standPad.name = 'crt_stand_pad';
+tv.add(standPad);
+
+// horizontal vent slats on the tapered sides of the housing
+const ventMat = new THREE.MeshBasicMaterial({ color: 0x0b0c0e });
+[1, -1].forEach(side => {
+  for (let i = 0; i < 7; i++) {
+    const v = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.035, 0.6), ventMat);
+    v.position.set(side * 1.64, -0.54 + i * 0.18, -2.1);
+    v.rotation.y = side * 0.564;          // follows the slope of the housing
+    v.name = `side_vent_${side > 0 ? 'r' : 'l'}_${i}`;
+    tv.add(v);
+  }
 });
 
 /* --- curved CRT glass with live picture --- */
@@ -809,7 +828,8 @@ function makeKnob(x, y, angle, label, name) {
   g.rotation.z = angle;
   const holder = new THREE.Group();
   holder.add(g);
-  holder.position.set(x, y, 0);
+  holder.position.set(x, y, 0.02);
+  holder.scale.setScalar(0.72);
   holder.name = name;
   const lab = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.34),
     new THREE.MeshBasicMaterial({ map: glyphTexture(label, '#8b9197', 128, 'bold 46px sans-serif'), transparent: true }));
@@ -817,15 +837,14 @@ function makeKnob(x, y, angle, label, name) {
   holder.add(lab);
   tv.add(holder);
 }
-makeKnob(1.95, 1.2, -0.7, 'CH', 'knob_channel');
-makeKnob(1.95, 0.55, 0.35, 'VOL', 'knob_volume');
-
-[1.45, 1.75, 2.05].forEach((x, i) => {
-  const b = new THREE.Mesh(capGeometry(0.075, 0.05), darkPlastic);
-  b.position.set(x, -1.5, 0);
-  b.name = 'tv_button_' + i;
-  tv.add(b);
-});
+// control panel in the chin: thin raised plate with two knobs, LED and the power button
+const panelShape = roundedRect(new THREE.Shape(), 0, 0, 1.9 - 0.024, 0.82 - 0.024, 0.12);
+const panel = new THREE.Mesh(extrude(panelShape, 0.006, 0.012, 16), innerWhite);
+panel.position.set(1.3, -1.55, 0);
+panel.name = 'crt_control_panel';
+tv.add(panel);
+makeKnob(0.7, -1.45, -0.7, 'CH', 'knob_channel');
+makeKnob(1.15, -1.45, 0.35, 'VOL', 'knob_volume');
 // power button: orange-red, slightly glossy
 const orangeGloss = new THREE.MeshPhysicalMaterial({
   color: 0xff5a1f, roughness: 0.3, metalness: 0,
@@ -842,22 +861,24 @@ function powerIconTexture() {
   return t;
 }
 const pwrGroup = new THREE.Group();
-const pwrCap = new THREE.Mesh(capGeometry(0.12, 0.06), orangeGloss);
+const pwrShape = roundedRect(new THREE.Shape(), 0, 0, 0.26 - 0.03, 0.26 - 0.03, 0.05);
+const pwrCap = new THREE.Mesh(extrude(pwrShape, 0.04, 0.015, 16), orangeGloss);   // rounded-square key
 const pwrIcon = new THREE.Mesh(new THREE.PlaneGeometry(0.13, 0.13),
   new THREE.MeshBasicMaterial({ map: powerIconTexture(), transparent: true }));
-pwrIcon.position.z = 0.062;
+pwrIcon.position.z = 0.072;
 const pwrLabel = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.34),
   new THREE.MeshBasicMaterial({ map: glyphTexture('POWER', '#8b9197', 128, 'bold 28px sans-serif'), transparent: true }));
 pwrLabel.position.set(0, -0.21, 0.002);
 pwrGroup.add(pwrCap, pwrIcon, pwrLabel);
-pwrGroup.position.set(2.4, -1.5, 0);
+pwrGroup.position.set(1.95, -1.5, 0.02);
 pwrGroup.name = 'tv_power_button';
-pwrGroup.userData.target = 0;
+pwrGroup.userData.rest = 0.02;
+pwrGroup.userData.target = 0.02;
 tv.add(pwrGroup);
 
 const tvLed = new THREE.Mesh(new THREE.SphereGeometry(0.028, 16, 16),
   new THREE.MeshStandardMaterial({ color: 0xff7a1a, emissive: 0xff6a00, emissiveIntensity: 2.4 }));
-tvLed.position.set(2.4, -1.27, 0.004); tvLed.name = 'tv_power_led'; tv.add(tvLed);
+tvLed.position.set(1.55, -1.45, 0.034); tvLed.name = 'tv_power_led'; tv.add(tvLed);
 
 // brand badge
 function badgeTexture() {
@@ -873,7 +894,7 @@ function badgeTexture() {
   return t;
 }
 const badge = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.3), new THREE.MeshBasicMaterial({ map: badgeTexture(), transparent: true }));
-badge.position.set(TWIN_CX, -1.58, 0.002);
+badge.position.set(-0.95, -1.55, 0.002);
 badge.name = 'crt_badge';
 tv.add(badge);
 
@@ -927,14 +948,14 @@ function hitPower(e) {
 function goToSite() {
   if (OPEN_IN_NEW_TAB) {
     const w = window.open(SITE_URL, '_blank', 'noopener');
-    if (w) { powering = false; pwrGroup.userData.target = 0; drawSite(); return; }
+    if (w) { powering = false; pwrGroup.userData.target = pwrGroup.userData.rest; drawSite(); return; }
   }
   window.location.href = SITE_URL;
 }
 function pressPower() {
   if (powering) return;
   powering = true;
-  pwrGroup.userData.target = -0.035;
+  pwrGroup.userData.target = pwrGroup.userData.rest - 0.035;
   console.log('[CRT] power pressed ->', SITE_URL);
   // CRT "switch-off" collapse, then redirect
   const t0 = performance.now(), DUR = 550;
@@ -955,7 +976,7 @@ function pressPower() {
   })(t0);
 }
 window.addEventListener('pageshow', e => {       // coming back with the browser's back button
-  if (e.persisted) { powering = false; pwrGroup.userData.target = 0; drawSite(); }
+  if (e.persisted) { powering = false; pwrGroup.userData.target = pwrGroup.userData.rest; drawSite(); }
 });
 
 renderer.domElement.addEventListener('pointerdown', e => {
